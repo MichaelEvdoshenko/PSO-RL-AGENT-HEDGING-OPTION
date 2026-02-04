@@ -13,7 +13,15 @@ def generate_dataset(true_params, expires, strikes, N=250, n_paths=50000):
                 'call_price_clean': S_0,
                 'T': E,
                 'K': K,
-                'true_params': str(true_params)
+                'v': v,
+                'S0': true_params["S0"],
+                'v0': true_params["v0"],
+                'kappa': true_params["kappa"],
+                'theta': true_params["theta"],
+                'xi': true_params["xi"],
+                'cor': true_params["cor"],
+                'r': true_params["r"],
+                'q': true_params["q"]
             })
     df = pd.DataFrame(data)
     df_noisy = df.copy()

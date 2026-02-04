@@ -5,7 +5,7 @@ def compute_price_call(params_stock, params_option, N=252, n_paths=10000):
 
     ''' 
     params_stock : dict
-        Параметры модели: S0, v0, kappa, theta, xi, rho, r, q
+        Параметры модели: S0, v0, kappa, theta, xi, cor, r, q
     params_option: dict
         Параметры опциона: T, K
     N : int
