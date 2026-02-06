@@ -27,7 +27,7 @@ def generate_dataset(true_params, expires, strikes, N=250, n_paths=50000):
     df_noisy = df.copy()
     
     noise = np.random.normal(0, 0.01, len(df))
-    df_noisy['call_price_market'] = df_noisy['call_price_clean'] * (1 + noise)
+    df_noisy['call_price_market'] = df_noisy['call_price_clean']
     
     spread = 0.03
     df_noisy['call_bid'] = df_noisy['call_price_market'] * (1 - spread/2)

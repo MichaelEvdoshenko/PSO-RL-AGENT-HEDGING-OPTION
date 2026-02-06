@@ -2,11 +2,13 @@ import numpy as np
 import pandas as pd
 from scipy.stats import norm
 
-def simulate_hekston_paths(params_stock, T_max, N=252, n_paths=1000):
+def simulate_hekston_paths(params_stock, T_max, N=252, n_paths=1000, seed=42):
     '''
     params_stock : dict
         Параметры модели: S0, v0, kappa, theta, xi, cor, r, q
     '''
+    #np.random.seed(seed)
+
     S0 = params_stock['S0']
     v0 = params_stock['v0']
     kappa = params_stock['kappa']
@@ -49,19 +51,17 @@ def simulate_hekston_paths(params_stock, T_max, N=252, n_paths=1000):
 
 
 
-def compute_price_call(params_stock, params_option, N=500, n_paths=1000):
-
+def compute_price_call(params_stock, params_option, N=500, n_paths=1000, seed=40):
     ''' 
     params_stock : dict
         Параметры модели: v0, kappa, theta, xi, cor
     params_option: pd.DataFrame
         Параметры опциона: [S0, T, K, r, q]
-    N : int
-        Количество шагов
-    n_paths: int
-        Количество симуляций
     '''
     T_max = np.max(params_option["T"])
+    
+    N = max(252, int(T_max * 252))
+    N = min(N, 1000)
 
     all_params = params_stock.copy()
     #const parametres of stock
@@ -72,19 +72,24 @@ def compute_price_call(params_stock, params_option, N=500, n_paths=1000):
     all_params["r"] = r
     all_params["q"] = q
 
-    table_of_S, table_of_v = simulate_hekston_paths(all_params, T_max, N, n_paths)
+    table_of_S, table_of_v = simulate_hekston_paths(all_params, T_max, N, n_paths, seed=seed)
     dt = T_max/N 
-    T_all = params_option["T"]
-
+    
+    T_all = params_option["T"].values
+    K_all = params_option["K"].values
+    
     res_S_0 = []
-    T_all_count_of_col = T_all//dt
-    for i in range(len(T_all_count_of_col)):
-        index = int(T_all_count_of_col.iloc[i])
-        v_T = np.mean(table_of_v[index])
+    
+    for i in range(len(T_all)):
+        T = T_all[i]
+        K = K_all[i]
         
-        K = params_option.iloc[i]["K"]
+        index = int(T // dt)
+        if index >= N:
+            index = N - 1
+        
         payoff = np.mean(np.maximum(table_of_S[:, index] - K, 0))
-        S_0 = np.exp(-r*T_all[i]) * payoff
+        S_0 = np.exp(-r * T) * payoff
         res_S_0.append(S_0)
 
     return res_S_0
