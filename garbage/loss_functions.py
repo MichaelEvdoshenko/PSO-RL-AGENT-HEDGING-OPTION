@@ -4,7 +4,7 @@ from simulate_hekston import compute_price_call
 from BSM import compute_vol_BSM
 from add_param import add_param
 
-def squad_error_for_all_options(params_stock, market_data):
+def squad_error_for_all_options(S0, params_stock, market_data):
     
     """ params_stock: dict/np.ndarray
             вычисленные параметры модели: v0, kappa, theta, xi, cor
@@ -16,13 +16,13 @@ def squad_error_for_all_options(params_stock, market_data):
     if (type(params_stock) == np.ndarray):
             names = ['v0', 'kappa', 'theta', 'xi', 'cor']
             params_stock = dict(zip(names, params_stock))  
-    S_0 = compute_price_call(params_stock, params_options)
+    S_0 = compute_price_call(S0, params_stock, params_options)
     total_error = np.sum((S_0 - market_data["call_mid"])**2)
     
     mse = total_error / len(market_data)
     return mse
 
-def heston_loss_function_stable(params_stock, market_data, seed=42, n_mc_samples=10):
+def heston_loss_function_stable(S0, params_stock, market_data, seed=42, n_mc_samples=10):
 
     v0, kappa, theta, sigma_v, cor = params_stock
 
@@ -56,7 +56,7 @@ def heston_loss_function_stable(params_stock, market_data, seed=42, n_mc_samples
         mc_seed = seed + mc_run * 1000
         #np.random.seed(mc_seed)
         
-        heston_prices = compute_price_call(
+        heston_prices = compute_price_call(S0,
             {'v0': v0, 'kappa': kappa, 'theta': theta, 
              'xi': sigma_v, 'cor': cor},
             market_data
