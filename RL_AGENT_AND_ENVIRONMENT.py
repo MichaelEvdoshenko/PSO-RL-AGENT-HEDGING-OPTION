@@ -50,7 +50,7 @@ class HedgingEnv():
         self.max_steps = self.total_days
         self.step_count = 0
     
-        self.action_space = spaces.Discrete(3)
+        self.action_space = spaces.Discrete(101)
         self.observation_space = self.define_observation_space()
     
         self.history = {
@@ -139,20 +139,22 @@ class HedgingEnv():
 
     def compute_portfolio_price(self):
 
-        port_stock_price = self.current_price_stock * self.current_count_stocks
-        price_option = compute_price_call_single(self.current_price_stock, self.K, self.rest_of_time, self.r, self.q, self.options_params)
-        port_option_price = self.current_price_option * self.current_count_options
+        stock_value = self.current_price_stock * self.current_count_stocks
 
-        return port_option_price + port_stock_price
+        time_to_expiry = max(self.rest_of_time, 0.001)
+        current_option_price = compute_price_call_single(self.current_price_stock, self.K, time_to_expiry, self.r, self.q, self.options_params)
+        option_value = current_option_price * self.current_count_options
+
+        portfolio_value = self.cash + stock_value + option_value
+    
+        return portfolio_value
 
     def trading(self, move):
         if (move == 0):
             return 0.0
     
-        if (move == 1):
-            count_trade = self.hedge_error * 0.5 
-        else:
-            count_trade = self.hedge_error
+        count_trade = self.hedge_error * (move/100) 
+
 
         if abs(count_trade) < 0.001:
             return 0.0
@@ -198,20 +200,97 @@ class HedgingEnv():
         return volatility
 
     def calculate_reward(self, daily_pnl, transaction_cost):
-        hedge_error = abs(self.hedge_error)
-    
-        pnl_volatility = self.calculate_pnl_volatility()
-        time_pressure = 1.0 / (self.rest_of_time + 0.1)
 
-        reward = -hedge_error - transaction_cost * 10.0
-        return reward * 0.1
+    # ============= 1. ПРИБЫЛЬ (ОСНОВА) =============
+    # В реальной жизни мы хотим ЗАРАБАТЫВАТЬ!
+        profit_reward = daily_pnl * 1.0  # Каждый доллар прибыли = +1
+    
+    
+    # ============= 2. ШТРАФ ЗА РИСК (НЕ ХЕДЖ) =============
+    # 100% хедж = 0 риск = нет штрафа
+    # 0% хедж = большой риск = большой штраф
+        risk_penalty = -abs(self.hedge_error) * 200.0  # Чем больше ошибка, тем хуже
+    
+    
+    # ============= 3. TRANSACTION COSTS (ПРОТИВ 100% ХЕДЖА) =============
+    # 100% хедж = ПОСТОЯННЫЕ сделки = КРУПНЫЙ штраф
+    # 0% хедж = нет сделок = нет штрафа
+        cost_penalty = -transaction_cost * 500.0  # Сильный штраф за торговлю!
+    
+    # 🔥 ИМЕННО ЭТО ЗАСТАВИТ АГЕНТА НЕ ХЕДЖИРОВАТЬ 100%!
+    # Теперь 100% хедж = маленький risk_penalty, но ОГРОМНЫЙ cost_penalty
+    # Агент должен найти БАЛАНС
+    
+    
+    # ============= 4. SLIPPAGE (РЕАЛЬНЫЙ РЫНОК) =============
+    # Чем больше сделка, тем хуже цена исполнения
+        if transaction_cost > 0:
+            # Примерно оцениваем размер сделки по transaction_cost
+            trade_size = transaction_cost / (self.current_price_stock * self.transaction_cost)
+            slippage_penalty = -abs(trade_size) * 10.0  # Штраф за крупные сделки
+        else:
+            slippage_penalty = 0.0
+    
+    
+    # ============= 5. MARGIN REQUIREMENTS (КАПИТАЛ) =============
+    # Нельзя использовать весь капитал на маржинальные требования
+    # Чем больше позиция, тем больше заморожено денег
+        margin_penalty = -abs(self.current_count_stocks) * 2.0
+    
+    
+    # ============= 6. РЕЖИМЫ РЫНКА =============
+        if len(self.history['portfolio_values']) > 5:
+            recent_returns = np.diff(self.history['portfolio_values'][-5:])
+            volatility = np.std(recent_returns)
+        
+        # В спокойном рынке - меньше хеджируем, экономим costs
+        # В волатильном рынке - больше хеджируем, защищаемся
+            if volatility > 100:  # Высокая волатильность
+                # Штрафуем за маленький хедж
+                adaptive_penalty = -abs(self.hedge_error) * 300.0
+            else:  # Низкая волатильность
+            # Штрафуем за большой хедж (лишние costs)
+                adaptive_penalty = abs(self.hedge_error) * -100.0 + abs(transaction_cost) * -200.0
+        else:
+            adaptive_penalty = 0.0
+    
+    
+    # ============= 7. CRASH PROTECTION =============
+        if daily_pnl < -100:  # Крупный убыток
+            crash_penalty = -abs(daily_pnl) * 3.0
+            print(f"⚠️ CRASH! PnL: {daily_pnl:.2f}, Penalty: {crash_penalty:.2f}")
+        else:
+            crash_penalty = 0.0
+    
+    
+    # ============= 8. БОНУС ЗА СТАБИЛЬНОСТЬ =============
+    # Sharpe ratio-like: награждаем за МАЛУЮ волатильность PnL
+        if len(self.history['portfolio_values']) > 10:
+            pnl_history = np.diff(self.history['portfolio_values'][-10:])
+            if np.std(pnl_history) > 0:
+                sharpe_bonus = (np.mean(pnl_history) / np.std(pnl_history)) * 10.0
+            else:
+                sharpe_bonus = 0.0
+        else:
+            sharpe_bonus = 0.0
+    
+    
+    # ============= СУММИРУЕМ =============
+        total_reward = (
+            profit_reward +                 # Хотим прибыль
+            risk_penalty +                 # Не хотим риск
+            cost_penalty +                # Не хотим платить комиссии
+            slippage_penalty +           # Не хотим большие сделки
+            margin_penalty +            # Не хотим занимать много капитала
+            adaptive_penalty +         # Адаптируемся к рынку
+            crash_penalty +           # Защита от катастроф
+            sharpe_bonus            # Хотим стабильность
+        )
+    
+        return total_reward
 
     def step(self, move):
         "move принимает одно из значений: [0, 1, 2] = {хеджировать на 0%, хеджировать на 50%, хеджировать на 100%}"
-
-        if move not in [0, 1, 2]:
-            raise ValueError("move должен быть 0, 1 или 2")
-            return False
         
         self.history["actions"].append(move)
         self.prev_action = move
@@ -233,6 +312,7 @@ class HedgingEnv():
 
         transaction_price = self.trading(move)
 
+        self.hedge_error = self.current_count_stocks - target_hedge
         new_portfolio_price = self.compute_portfolio_price()
         daily_pnl = new_portfolio_price - self.old_portfolio_price
         reward = self.calculate_reward(daily_pnl, transaction_price)
@@ -253,7 +333,7 @@ class HedgingEnv():
 
 
 class AgentDQN:
-    def __init__(self, state_dim=6, action_dim=3):
+    def __init__(self, state_dim=6, action_dim=101):
         self.state_dim = state_dim
         self.action_dim = action_dim
 
@@ -331,14 +411,15 @@ class AgentDQN:
         
         self.optimizer.step()
         
-        if self.epsilon > self.epsilon_min:
-            self.epsilon *= self.epsilon_decay
-        
         self.train_step += 1
         if self.train_step % self.update_target_every == 0:
             self.target_net.load_state_dict(self.policy_net.state_dict())
         
         return loss.item()
+    
+    def decay_epsilon(self):
+        if self.epsilon > self.epsilon_min:
+            self.epsilon *= self.epsilon_decay
 
     def save(self, filename="dqn_agent.pth"):
         """Сохранение модели"""
