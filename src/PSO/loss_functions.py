@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
-from simulate_hekston import compute_price_call
-from BSM import compute_vol_BSM
+from PSO.simulate_hekston import compute_price_call
+from PSO.BSM import compute_vol_BSM
 
 def heston_loss_function_stable(S0, params_stock, market_data, seed=42, n_mc_samples=10):
 

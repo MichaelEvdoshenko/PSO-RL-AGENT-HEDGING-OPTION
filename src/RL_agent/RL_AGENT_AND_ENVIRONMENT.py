@@ -4,7 +4,7 @@ import torch.optim as optim
 import torch.nn as nn 
 import random
 from collections import deque
-from hekston_model import compute_price_call_single, calculate_heston_gamma, calculate_heston_delta
+from RL_agent.hekston_model import compute_price_call_single, calculate_heston_gamma, calculate_heston_delta
 from gymnasium import spaces
 
 class HedgingEnv():

@@ -1,19 +1,19 @@
 import numpy as np
 import pandas as pd
-from loss_functions import heston_loss_function_stable
+from PSO.loss_functions import heston_loss_function_stable
 
 class PSO_optimize:
-        def __init__(self,
-                    bounds,
-                    market_data,
-                    n_particles=50,
-                 max_iter=100,
-                 w_start=0.9,
-                 w_end=0.4,
-                 c1_start=2.0,
-                 c1_end=0.5,
-                 c2_start=2.0,
-                 c2_end=0.5):
+    def __init__(self,
+                bounds,
+                market_data,
+                n_particles=50,
+                max_iter=100,
+                w_start=0.9,
+                w_end=0.4,
+                c1_start=2.0,
+                c1_end=0.5,
+                c2_start=2.0,
+                c2_end=0.5):
         
         self.count_param = len(bounds)
         self.market_data = market_data

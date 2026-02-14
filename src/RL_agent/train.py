@@ -1,8 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
-from RL_AGENT_AND_ENVIRONMENT import HedgingEnv, AgentDQN
-from hekston_model import compute_price_call_single, calculate_heston_delta
+from RL_agent.RL_AGENT_AND_ENVIRONMENT import HedgingEnv, AgentDQN
+from RL_agent.hekston_model import compute_price_call_single, calculate_heston_delta
 from collections import deque
 
 def train(params, S0, K, T, r, q):
