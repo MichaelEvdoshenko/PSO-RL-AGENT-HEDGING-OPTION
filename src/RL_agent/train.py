@@ -58,6 +58,4 @@ def train(params, S0, K, T, r, q):
         
         if episode % 2 == 0:
             avg_reward = np.mean(rewards_history[-20:]) if len(rewards_history) >= 20 else np.mean(rewards_history)
-            print(f"   Эпизод {episode:4d}: Reward = {total_reward:8.2f} | "
-                  f"Avg = {avg_reward:8.2f} | Epsilon = {agent.epsilon:.3f} | "
-                  f"Memory = {len(agent.memory)}" f"sup_count = {sup_count}")
+            print(f"эпизод {episode}: Reward = {total_reward} | Avg = {avg_reward} | Epsilon = {agent.epsilon} | Memory = {len(agent.memory)} | sup_count = {sup_count}")
