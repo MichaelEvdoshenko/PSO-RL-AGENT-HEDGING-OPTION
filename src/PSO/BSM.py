@@ -9,9 +9,9 @@ def BSM_compute_price(params, vol):
         S0, K, T, r, q
     vol: int
     '''
-    S0 = params["S0"] #float
-    r = params["r"] #float
-    q = params["q"] #float
+    S0 = params["S0"]
+    r = params["r"]
+    q = params["q"]
 
     K = params["K"]
     T = params["T"]

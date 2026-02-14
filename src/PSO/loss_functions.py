@@ -2,25 +2,6 @@ import pandas as pd
 import numpy as np
 from simulate_hekston import compute_price_call
 from BSM import compute_vol_BSM
-from add_param import add_param
-
-def squad_error_for_all_options(S0, params_stock, market_data):
-    
-    """ params_stock: dict/np.ndarray
-            вычисленные параметры модели: v0, kappa, theta, xi, cor
-        market_data: DataFrame
-            рыночные данные опциона и акции ["S0", "T", "K", "r", "q"]
-    """
-
-    params_options = market_data[["S0", "T", "K", "r", "q"]].copy()
-    if (type(params_stock) == np.ndarray):
-            names = ['v0', 'kappa', 'theta', 'xi', 'cor']
-            params_stock = dict(zip(names, params_stock))  
-    S_0 = compute_price_call(S0, params_stock, params_options)
-    total_error = np.sum((S_0 - market_data["call_mid"])**2)
-    
-    mse = total_error / len(market_data)
-    return mse
 
 def heston_loss_function_stable(S0, params_stock, market_data, seed=42, n_mc_samples=10):
 
